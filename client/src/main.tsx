@@ -187,7 +187,7 @@ function Auth({ onAuthenticated }: { onAuthenticated: (user: User) => void }) {
         badge: u.role === 'ADMIN' ? 'Admin Account' : undefined,
       }));
       setGoogleAccounts(accounts);
-    } catch (err) {
+    } catch {
       setGoogleAccounts([]);
     }
   }

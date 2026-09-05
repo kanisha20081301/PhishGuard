@@ -108,7 +108,7 @@ export async function handleGoogleCallback(code: string) {
   }
 
   // Ensure Mailbox exists and save token reference
-  const tokenRef = `google-oauth-${user.id}-${Date.now()}`;
+  const tokenRef = randomUUID();
   let mailbox = await database.mailbox.findFirst({ where: { userId: user.id } });
   if (!mailbox) {
     mailbox = await database.mailbox.create({
@@ -158,9 +158,12 @@ export async function fetchLiveGmailMessages(accessToken: string, maxResults = 2
     throw new Error(`Gmail list messages failed: ${listResponse.statusText}`);
   }
 
-  const listData = (await listResponse.json()) as {
+  // Types for Gmail list response
+  interface GmailListResponse {
     messages?: Array<{ id: string; threadId: string }>;
-  };
+  }
+
+  const listData = (await listResponse.json()) as GmailListResponse;
 
   const messageSummaries = listData.messages ?? [];
   const fetchedEmails: Array<{
@@ -179,11 +182,20 @@ export async function fetchLiveGmailMessages(accessToken: string, maxResults = 2
       });
       if (!msgRes.ok) continue;
 
-      const msgData = (await msgRes.json()) as any;
+      interface GmailMessagePayload {
+        headers?: Array<{ name: string; value: string }>;
+        parts?: Array<{ mimeType: string; body?: { data?: string } }>;
+      }
+      interface GmailMessageData {
+        id: string;
+        snippet?: string;
+        payload?: GmailMessagePayload;
+      }
+      const msgData = (await msgRes.json()) as GmailMessageData;
       const headers = msgData.payload?.headers ?? [];
 
       const getHeader = (name: string) =>
-        headers.find((h: any) => h.name.toLowerCase() === name.toLowerCase())?.value ?? '';
+        headers.find((h) => h.name.toLowerCase() === name.toLowerCase())?.value ?? '';
 
       const sender = getHeader('From') || 'unknown@sender.com';
       const recipient = getHeader('To') || 'me@gmail.com';
@@ -195,7 +207,7 @@ export async function fetchLiveGmailMessages(accessToken: string, maxResults = 2
       // Attempt extracting plain text part
       const parts = msgData.payload?.parts;
       if (Array.isArray(parts)) {
-        const textPart = parts.find((p: any) => p.mimeType === 'text/plain');
+        const textPart = parts.find((p) => p.mimeType === 'text/plain');
         if (textPart?.body?.data) {
           bodyText = Buffer.from(textPart.body.data, 'base64').toString('utf8');
         }
