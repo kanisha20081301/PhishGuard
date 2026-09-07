@@ -61,17 +61,19 @@ type Analysis = {
   modelName: string;
 };
 
+const API_BASE = import.meta.env.VITE_API_URL || '';
+
 async function api<T>(path: string, options?: RequestInit): Promise<T> {
   let response: Response;
   try {
-    response = await fetch(`/api/v1${path}`, {
+    response = await fetch(`${API_BASE}/api/v1${path}`, {
       ...options,
       credentials: 'include',
       headers: { 'Content-Type': 'application/json', ...options?.headers },
     });
   } catch {
     throw new Error(
-      'The API is offline. Start the backend with npm run dev and configure server/.env.',
+      'The API is offline. Start the backend with npm run dev or check your VITE_API_URL configuration.',
     );
   }
   const body = (await response.json().catch(() => ({}))) as T & {
